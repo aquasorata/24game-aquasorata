@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "24 GAME by aquasorata",
+  title: "Battle of 24",
 };
 
 export default async function RootLayout({
