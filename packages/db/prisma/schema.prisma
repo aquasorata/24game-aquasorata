@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MatchMode {
+  DUEL
+  SOLO
+}
+
+enum MatchStatus {
+  WAITING
+  RUNNING
+  FINISHED
+}
+
+enum PlayerResult {
+  WIN
+  LOSE
+  DRAW
+  SOLO
+}
+
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  passwordHash  String
+  createdAt     DateTime @default(now())
+
+  elo       Int      @default(1000)
+  games     Int      @default(0)
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  draws     Int      @default(0)
+
+  matchPlayers MatchPlayer[]
+  ratingLogs   RatingLog[]
+}
+
+model Match {
+  id         String      @id @default(cuid())
+  mode       MatchMode
+  status     MatchStatus @default(WAITING)
+
+  seed       String
+  puzzle     String
+  startedAt  DateTime?
+  endedAt    DateTime?
+
+  players    MatchPlayer[]
+  createdAt  DateTime     @default(now())
+}
+
+model MatchPlayer {
+  id        String       @id @default(cuid())
+  matchId   String
+  userId    String
+  match     Match        @relation(fields: [matchId], references: [id])
+  user      User         @relation(fields: [userId], references: [id])
+
+  result    PlayerResult?
+  timeMs    Int?
+  correctAt DateTime?
+
+  submissions Submission[]
+}
+
+model Submission {
+  id            String      @id @default(cuid())
+  matchPlayerId String
+  matchPlayer   MatchPlayer @relation(fields: [matchPlayerId], references: [id])
+
+  expression    String
+  isCorrect     Boolean
+  createdAt     DateTime @default(now())
+}
+
+model RatingLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  matchId   String?
+  before    Int
+  after     Int
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+}
