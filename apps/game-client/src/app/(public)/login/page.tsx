@@ -1,13 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { LoginAction } from "./actions";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
-
   async function handleLogin(formData: FormData) {
     const result = await LoginAction(formData);
 
@@ -17,8 +14,8 @@ export default function LoginPage() {
     }
 
     toast.success('Login successful!');
-
-    router.push('/play');
+    
+    window.location.replace('/');
   }
   return (
     <main className="min-h-screen p-8 flex items-center justify-center">

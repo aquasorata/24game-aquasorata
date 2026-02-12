@@ -13,6 +13,11 @@ export type MatchStart = {
   players: { userId: string }[]
 }
 
+export type MatchSync = {
+ ok: boolean
+ state: MatchStart
+}
+
 export type GameStatus = 'idle' | 'queued' | 'playing' | 'done';
 
 export type RatingChange = {
@@ -86,7 +91,7 @@ export function useDuel() {
       toast.error('Opponent disconnected!');
     })
 
-    s.on("match:opponent:reconnected", (p: OpponentDisconnectedPayload) => {
+    s.on("match:opponent:reconnected", () => {
       setOppDc(null);
       setOppDcLeftMs(0);
       toast.success("Opponent reconnected!");
@@ -96,7 +101,7 @@ export function useDuel() {
       s.emit('match:sync', { matchId: p.matchId });
     })
 
-    s.on('match:sync:result', (res: any) => {
+    s.on('match:sync:result', (res: MatchSync) => {
       if (!res.ok) {
         toast.error('Resume failed');
         return;

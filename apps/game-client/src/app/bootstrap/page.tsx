@@ -16,10 +16,6 @@ export default function LoginPage() {
         setMsg(`${result.message}`);
         return;
       }
-
-      const { user } = result;
-
-      localStorage.setItem("game_user_id", user.username);
       
       setMsg(`User created successfully`);
     } catch {

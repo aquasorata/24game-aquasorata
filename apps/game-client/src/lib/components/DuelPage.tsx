@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useDuel } from '../gameserver/useDuel';
 import { BackButton } from "./BackButton ";
 import { useRouter } from "next/navigation";
+import { MenuButton } from "./MenuButton";
+import ModulePortal from "./ModalPortal";
 
 export default function DuelPage() {
   const router = useRouter();
@@ -15,18 +17,30 @@ export default function DuelPage() {
   }, [username, userId, router]);
 
   useEffect(() => {
-    if (match) {
+    if (match?.matchId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExpression('');
     }
-  }, [match?.matchId]);
-
+  }, [match]);
+  
   return (
-    <div className="min-h-screen p-6 flex items-center justify-center">
-      <div className="w-full max-w-xl border border-[#64afdd] bg-white/95 backdrop-blur-md p-6 space-y-4">
+    <div className="
+      min-h-screen 
+      p-3 mobile-m:p-4 mobile-l:p-5 tablet:p-6
+      flex items-center justify-center
+    ">
+      <div className="
+        w-full 
+        max-w-sm mobile-l:max-w-md tablet:max-w-xl laptop:max-w-2xl
+        border border-[#64afdd] mobile-s:border-[#64afdd]
+        bg-white/95 backdrop-blur-md 
+        p-4 mobile-l:p-6
+        space-y-4
+      ">
         <div className="flex items-center justify-between">
           <BackButton/>
           <div className="text-lg font-semibold uppercase text-[#64afdd]">24 Game — Duel Mode</div>
-          <div className="text-base font-semibold text-[#64afdd]">{username ? `${username.slice(0, 8)}` : 'Guest'}</div>
+          <MenuButton/>
         </div>
 
         <div className="border flex flex-row justify-between border-[#64afdd]">  
@@ -81,7 +95,7 @@ export default function DuelPage() {
 
             <div className="p-3 text-xs space-y-1 uppercase">
               <div className="font-bold uppercase text-[#64afdd]">Rules</div>
-              <ol className="list-decimal list-inside text-slate-700">
+              <ol className="list-decimal list-inside text-slate-700 uppercase">
                 <li>Use all given numbers. No skipping and no reuse.</li>
                 <li>Only the operators + − × ÷ are allowed.</li>
                 <li>You can change the order using parentheses.</li>
@@ -155,17 +169,28 @@ export default function DuelPage() {
           </div>
         )}
         {status === "playing" && oppDc && (
-          <div className="fixed inset-0 bg-black/40 grid place-items-center z-50">
-            <div className="rounded-2xl bg-white p-6 w-[320px] text-center space-y-2">
-              <div className="text-lg font-semibold">Opponent disconnected</div>
-              <div className="text-sm text-gray-600">
-                Reconnect within {Math.ceil(oppDcLeftMs / 1000)} seconds
-              </div>
-              <div className="text-xs text-gray-400">
-                Game will end automatically if reconnection times out.
-              </div>
+        <ModulePortal open={status === "playing"}>
+          <div className="
+            popover-panel
+            fixed left-1/2 top-1/2
+            -translate-x-1/2 -translate-y-1/2
+            w-80 p-4 shadow-xl
+            bg-white text-[#64afdd]
+            border border-[#64afdd]"
+          >
+            <div className="font-semibold text-lg mb-4 text-center uppercase">Opponent disconnected</div>
+            <div className="text-sm text-center text-slate-700 uppercase">
+              Reconnect within{" "}
+              <span className="text-[#64afdd] font-bold text-sm">
+                {Math.ceil(oppDcLeftMs / 1000)}
+              </span>{" "}
+              seconds
+            </div>
+            <div className="text-xs text-center text-slate-700 uppercase">
+              Game will end automatically if reconnection times out.
             </div>
           </div>
+        </ModulePortal>
         )}
       </div>
     </div>

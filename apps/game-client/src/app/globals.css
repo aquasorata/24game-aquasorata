@@ -1,10 +1,70 @@
 @import "tailwindcss";
 @layer theme, base, components, utilities;
 
-#login-confirm::backdrop,
-#how-to-play::backdrop {
+/* ===== Backdrop ===== */
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
   background: rgba(0,0,0,.35);
   backdrop-filter: blur(2px);
+  z-index: 999;
+}
+
+/* ===== Panel ===== */
+.popover-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  background: white;
+  z-index: 1000;
+}
+
+/* ===== Animations ===== */
+.fade-in {
+  animation: fadeIn .25s ease forwards;
+}
+.fade-out {
+  animation: fadeOut .25s ease forwards;
+}
+
+.pop-in {
+  animation: popIn .25s ease forwards;
+}
+.pop-out {
+  animation: popOut .25s ease forwards;
+}
+
+/* ===== Keyframes ===== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes popOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.96);
+  }
 }
 
 @theme {
@@ -22,6 +82,12 @@
     0% { background-position: 0px 50%; }
     100% { background-position: -2000px 50%; }
   }
+
+  --breakpoint-mobile-s: 320px;
+  --breakpoint-mobile-m: 375px;
+  --breakpoint-mobile-l: 425px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-laptop: 1024px;
 }
 
 @theme inline {

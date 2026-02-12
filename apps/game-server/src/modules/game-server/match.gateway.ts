@@ -28,6 +28,7 @@ type PendingReconnect = {
 
 const JoinSchema = z.object({ userId: z.string().min(1) });
 const SubmitSchema = z.object({
+  puzzle: z.string().min(1),
   matchId: z.string().min(1),
   expression: z.string().min(1),
 });
@@ -65,25 +66,30 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
       const { sid } = cookie.parse(rawCookie);
 
       if (!sid) {
-        next(new Error('unauthorized'));
-        return;
+        socket.data.userId = undefined;
+        socket.data.username = undefined;
+        socket.data.isGuest = true;
+        return next();
       }
 
       this.matchService.getUserBySessionId(sid)
         .then((user) => {
           if (!user) {
-            next(new Error('unauthorized'));
-            return;
+            socket.data.isGuest = true;
+            return next();
           }
   
           socket.data.userId = user.id;
           socket.data.username = user.username;
+          socket.data.isGuest = false;
+
           this.bindSocket(user.id, socket.id);
   
           next();
         })
         .catch(() => {
-          next(new Error('unauthorized'));
+          socket.data.isGuest = true;
+          next();
         });
     });
   }
@@ -99,14 +105,10 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
     const userId = client.data.userId;
     if (!userId) return;
     this.onReconnect(userId);
-    console.log('connected:', client.id, 'userId:', client.data.userId);
   }
 
   private graceMs = 15_000;
   async onDisconnect(userId: string) {
-    this.matchService.leaveDuelQueue(userId);
-    console.log('leaveDuelQueue')
-
     const match = await prisma.match.findFirst({
       where: { 
         status: 'RUNNING', 
@@ -117,84 +119,118 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
       },
       include: { players: true },
     });
+
     if (!match) return;
 
-    const opponent = match.players.find(p => p.userId !== userId);
-    if(!opponent) return;
+    if (match.mode === 'SOLO') {
+      this.matchService.leaveSoloQueue(userId);
 
-    if (this.pendingReconnect.has(userId)) return;
+      if (match.status !== 'RUNNING' || match.players.some((p) => p.correctAt) || !match.startedAt) return;
 
-    const deadlineAt = Date.now() + this.graceMs;
+      const player = await prisma.matchPlayer.findFirst({
+        where: {
+          matchId: match.id,
+          userId: userId,
+        },
+      });
 
-    this.emitToUser(opponent.userId, 'match:opponent:disconnected', {
-      matchId: match.id,
-      graceMs: this.graceMs,
-      deadlineAt,
-      serverNow: Date.now(),
-    });
+      if (!player) return;
 
-    const timer = setTimeout(() => {
-      const p = this.pendingReconnect.get(userId);
-      if (!p) return;
+      const now = new Date();
+      const timeMs = now.getTime() - match.startedAt.getTime();
 
-      this.pendingReconnect.delete(userId);
-
-      this.matchService
-        .finishMatchByForfeit(p.matchId, userId, p.opponentUserId, {
-          reason: 'DISCONNECT_TIMEOUT',
-        })
-        .then((res) => {
-          const { matchId, winnerElo, winnerUserId, winnerTimeMs } = res;
-          
-          this.emitToUser(winnerUserId, 'match:duel:result', {
-            matchId: matchId,
-            winnerId: winnerUserId,
-            winnerTimeMs,
-            rating: { before: winnerElo.before, after: winnerElo.after, delta: winnerElo.delta},
-            reason: 'OPPONENT_TIMEOUT',
-          });
-        })
-        .catch((err) => {
-          if (isAppError(err)) {
-            if (SILENT_CODES.has(err.code)) {
-              console.log(`forfeit skipped: ${err.code}`);
-              return;
-            }
-
-            if (SHOULD_FORCE_SYNC.has(err.code)) {
-              this.emitToUser(p.opponentUserId, 'match:error', {
-                code: err.code,
-                message: err.messageSafe,
-                action: 'SYNC',
-                matchId: p.matchId,
-              });
-              return;
-            }
-
-            if (SHOULD_RELOGIN.has(err.code)) {
-              this.emitToUser(p.opponentUserId, 'match:error', {
-                code: err.code,
-                message: err.messageSafe,
-                action: 'RELOGIN',
-              });
-              return;
-            }
-          }
-          console.error('forfeit failed:', err);
-          this.emitToUser(p.opponentUserId, 'match:error', {
-            code: 'internal_error',
-            message: 'Something went wrong',
-          });
+      await prisma.$transaction(async (tx) => {
+        await tx.matchPlayer.update({
+          where: { id: player.id },
+          data: { timeMs, result: 'SOLO' },
         });
-    }, this.graceMs);
 
-    this.pendingReconnect.set(userId, {
-      matchId: match.id,
-      userId,
-      opponentUserId: opponent.userId,
-      deadlineAt,
-      timer,
-    });
+        await tx.match.update({
+          where: { id: match.id },
+          data: {
+            status: 'FINISHED',
+            endedAt: new Date(),
+          },
+        });
+      });
+    }
+
+    if (match.mode === 'DUEL') {
+      this.matchService.leaveDuelQueue(userId);
+  
+      const opponent = match.players.find(p => p.userId !== userId);
+      if(!opponent) return;
+
+      if (this.pendingReconnect.has(userId)) return;
+
+      const deadlineAt = Date.now() + this.graceMs;
+
+      this.emitToUser(opponent.userId, 'match:opponent:disconnected', {
+        matchId: match.id,
+        graceMs: this.graceMs,
+        deadlineAt,
+        serverNow: Date.now(),
+      });
+
+      const timer = setTimeout(() => {
+        const p = this.pendingReconnect.get(userId);
+        if (!p) return;
+
+        this.pendingReconnect.delete(userId);
+
+        this.matchService
+          .finishMatchByForfeit(p.matchId, userId, p.opponentUserId, {
+            reason: 'DISCONNECT_TIMEOUT',
+          })
+          .then((res) => {
+            const { matchId, winnerElo, winnerUserId, winnerTimeMs } = res;
+            
+            this.emitToUser(winnerUserId, 'match:duel:result', {
+              matchId: matchId,
+              winnerId: winnerUserId,
+              winnerTimeMs,
+              rating: { before: winnerElo.before, after: winnerElo.after, delta: winnerElo.delta},
+              reason: 'OPPONENT_TIMEOUT',
+            });
+          })
+          .catch((err) => {
+            if (isAppError(err)) {
+              if (SILENT_CODES.has(err.code)) return;
+  
+              if (SHOULD_FORCE_SYNC.has(err.code)) {
+                this.emitToUser(p.opponentUserId, 'match:error', {
+                  code: err.code,
+                  message: err.messageSafe,
+                  action: 'SYNC',
+                  matchId: p.matchId,
+                });
+                return;
+              }
+              if (SHOULD_RELOGIN.has(err.code)) {
+                this.emitToUser(p.opponentUserId, 'match:error', {
+                  code: err.code,
+                  message: err.messageSafe,
+                  action: 'RELOGIN',
+                });
+                return;
+              }
+            }
+            console.error('forfeit failed:', err);
+            this.emitToUser(p.opponentUserId, 'match:error', {
+              code: 'internal_error',
+              message: 'Something went wrong',
+            });
+          });
+      }, this.graceMs);
+
+      this.pendingReconnect.set(userId, {
+        matchId: match.id,
+        userId,
+        opponentUserId: opponent.userId,
+        deadlineAt,
+        timer,
+      });
+    }
   }
 
   onReconnect(userId: string) {
@@ -210,8 +246,6 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
       matchId: p.matchId,
       userId
     });
-    
-    console.log('Reconnected:', userId);
 
     this.emitToUser(userId, 'match:resume', {
       matchId: p.matchId,
@@ -255,12 +289,12 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
     @MessageBody() body: unknown,
     @ConnectedSocket() socket: Socket<any, any, any, SocketData>,
   ) {
-    const { userId } = JoinSchema.parse(body) as QueueJoinPayload;
-    socket.data.userId = userId;
+    const userId = socket.data.userId ?? `guest-${socket.id}`
+    const isGuest = socket.data.isGuest ?? true;
 
     try {
       console.log(`Solo: userId:${userId} | socketId:${socket.id}`);
-      const res = await this.matchService.joinSoloQueue(userId, socket.id);
+      const res = await this.matchService.joinSoloQueue(userId, socket.id, { isGuest });
 
       if (res.queueStatus) return socket.emit('queue:solo:status', res.queueStatus);
 
@@ -296,13 +330,28 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
     @MessageBody() body: unknown,
     @ConnectedSocket() socket: Socket<any, any, any, SocketData>,
   ) {
-    const { matchId, expression } = SubmitSchema.parse(
+    const { puzzle, matchId, expression } = SubmitSchema.parse(
       body,
     ) as MatchSubmitPayload;
 
-    const userId: string | undefined = socket.data.userId;
-    const usernameUser: string | undefined = socket.data.username;
+    const userId = socket.data.userId;
+    const usernameUser = socket.data.username;
+    const isGuest = socket.data.isGuest;
 
+    if (isGuest) {
+      const { submitResult, matchResult } = this.matchService.submitGuest(
+        {
+          puzzle,
+          matchId,
+          expression,
+        }
+      );
+
+      socket.emit('match:solo:submit:result', submitResult);
+
+      if (matchResult)
+        return this.server.to(matchId).emit('match:solo:result', matchResult);
+    }
 
     if (!userId || !usernameUser) {
       socket.emit('match:solo:submit:result', {
@@ -389,8 +438,6 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
 
     const userId = socket.data.userId;
     const usernameUser = socket.data.username;
-
-    console.log(`onDuelMatchSubmit: ${userId} | ${usernameUser}`);
 
     if (!userId || !usernameUser) {
       socket.emit('match:duel:submit:result', {

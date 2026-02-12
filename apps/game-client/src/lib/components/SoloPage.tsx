@@ -1,20 +1,36 @@
 import { useState } from 'react';
 import { useSolo } from '../gameserver/useSolo';
 import { BackButton } from './BackButton ';
+import { MenuButton } from './MenuButton';
 // import { useAuth } from '../../app/providers/auth-provider';
 
 export default function SoloPage() {
 //   const { me, isAuthed, setMe } = useAuth();
-  const { username, userId, status, match, timerMs, submitMsg, result, joinQueue, leaveQueue, submit } = useSolo();
+  const { userId, status, match, timerMs, submitMsg, result, joinQueue, leaveQueue, submit } = useSolo();
   const [expression, setExpression] = useState('');
 
   return (
-    <div className="min-h-screen p-6 flex items-center justify-center">
-      <div className="w-full max-w-xl border border-[#64afdd] bg-white backdrop-blur-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
+    <div className="
+      min-h-screen 
+      p-3 mobile-m:p-4 mobile-l:p-5 tablet:p-6
+      flex items-center justify-center
+    ">
+      <div className="
+        w-full 
+        max-w-sm mobile-l:max-w-md tablet:max-w-xl laptop:max-w-2xl
+        border border-[#64afdd] mobile-s:border-[#64afdd]
+        bg-white/95 backdrop-blur-md 
+        p-4 mobile-l:p-6
+        space-y-4
+      ">
+        <div className="
+          flex flex-col tablet:flex-row
+          gap-4 tablet:gap-0
+          items-center justify-between
+        ">
           <BackButton/>
           <div className="text-lg font-semibold uppercase text-[#64afdd]">24 Game — Solo Mode</div>
-          <div className="text-base font-semibold text-[#64afdd]">{username ? `${username.slice(0, 8)}` : 'Guest'}</div>
+          <MenuButton/>
         </div>
 
         <div className="border flex flex-row justify-between border-[#64afdd]">  
@@ -24,7 +40,7 @@ export default function SoloPage() {
           </div>
           <div className="p-4">
             <div className="text-sm text-slate-700 uppercase">Mode</div>
-            <div className="text-base font-semibold uppercase text-[#64afdd]">Duel</div>
+            <div className="text-base font-semibold uppercase text-[#64afdd]">Solo</div>
           </div>
         </div>
 
@@ -79,7 +95,10 @@ export default function SoloPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="
+              flex flex-col tablet:flex-row
+              gap-2
+            ">
               <input
                 className={`
                   flex-1 border px-3 py-2
@@ -99,7 +118,7 @@ export default function SoloPage() {
               />
               <button
                 className={`
-                  border px-4
+                  border px-3 py-2
                   transition-colors duration-300
                   font-semibold uppercase
                   ${
@@ -121,8 +140,8 @@ export default function SoloPage() {
             {result && (
               <>
                 <div className="border bg-[#64afdd] border-[#64afdd] p-3 text-base font-semibold text-white space-y-1">
-                  <div>{result.winnerId == userId ? 'YOU WON' : 'YOU LOSE'}</div>
-                  <div>WINNER TIME: {(result.winnerTimeMs / 1000).toFixed(2)}s</div>
+                  <div>{result.winnerId == userId || result.winnerId == 'Guest' ? 'YOU WON' : 'YOU LOSE'}</div>
+                  <div>WINNER TIME: {result.winnerId == 'Guest' ? (timerMs / 1000).toFixed(2) : (result.winnerTimeMs / 1000).toFixed(2)}s</div>
                 </div>
                 <div className="border border-[#64afdd] text-base font-semibold space-y-1 text-center">
                   <button

@@ -11,7 +11,6 @@ export function useSolo() {
   const username = me?.username;
   const userId = me?.userId;
   const socketRef = useRef<Socket | null>(null);
-
   const [status, setStatus] = useState<GameStatus>('idle');
   const [match, setMatch] = useState<MatchStart | null>(null);
   const [timerMs, setTimerMs] = useState(0);
@@ -38,7 +37,7 @@ export function useSolo() {
     });
 
     s.on("match:solo:submit:result", (p) => {
-      setSubmitMsg(p.ok ? "✅ OK!" : `❌ ${p.reason ?? "WRONG"}`);
+      setSubmitMsg(p.ok ? "CORRECT!" : `❌ ${p.reason ?? "WRONG"}`);
     });
 
     s.on("match:solo:result", (p) => {
@@ -78,6 +77,7 @@ export function useSolo() {
   function submit(expression: string) {
     if (!match) return;
     socketRef.current?.emit('match:solo:submit', {
+      puzzle: match.puzzle,
       matchId: match.matchId,
       expression
     })

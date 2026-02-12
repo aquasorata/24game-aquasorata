@@ -22,6 +22,7 @@ export type MatchStartPayload = {
 };
 
 export type MatchSubmitPayload = {
+  puzzle?: string;
   matchId: string;
   expression: string;
 };
@@ -50,4 +51,8 @@ export type MatchResultPayload = {
       delta: number;
     }
   >;
+};
+
+export type MatchResultGuestPayload = {
+  winnerId: string;
 };

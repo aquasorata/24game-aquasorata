@@ -43,7 +43,7 @@ function LoginConfirmModal({onClose, onLogin} : LoginConfirmModalProps)  {
   );
 }
 
-export function DuelButton({ isLoggedIn }: { isLoggedIn: Boolean}) {
+export function DuelButton({ isLoggedIn }: { isLoggedIn: boolean}) {
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
 

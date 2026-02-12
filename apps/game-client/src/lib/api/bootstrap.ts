@@ -6,7 +6,7 @@ export async function bootstrapUser(input: {
   username: string;
   password: string;
 }): Promise<BootstrapResult> {
-  const base = process.env.NEXT_PUBLIC_GAME_SERVER_URL;
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
   const res = await fetch(`${base}/api/bootstrap`, {
     method: 'POST',
     headers: { "Content-Type": "application/json" },

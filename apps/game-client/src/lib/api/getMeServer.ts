@@ -9,7 +9,7 @@ export async function getMeServer(): Promise<Me|null> {
 
   if (!sid) return null;
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_GAME_SERVER_URL}/auth/me`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
     headers: { cookie: `sid=${sid}` },
     credentials: "include",
     cache: "no-store",

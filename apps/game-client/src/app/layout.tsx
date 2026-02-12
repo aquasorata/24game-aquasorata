@@ -25,7 +25,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const me = await getMeServer(); 
+  const me = await getMeServer();
 
   return (
     <AuthProvider me={me}>

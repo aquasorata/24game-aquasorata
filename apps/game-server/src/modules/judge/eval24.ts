@@ -7,6 +7,7 @@ export type CheckFailReason =
   | 'not_24'
   | 'not_found_match'
   | 'not_found_player'
+  | 'not_found_puzzel'
   | 'invalid_expression';
 
 type ChechResult =

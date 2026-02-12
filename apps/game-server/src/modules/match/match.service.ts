@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MatchMode, MatchStatus, prisma } from '@repo/db';
 import {
   MatchFoundPayload,
+  MatchResultGuestPayload,
   MatchResultPayload,
   MatchStartPayload,
   MatchSubmitPayload,
@@ -44,6 +45,7 @@ export class MatchService {
   async joinSoloQueue(
     userId: string,
     socketId: string,
+    opts: { isGuest: boolean }
   ): Promise<{
     queueStatus?: QueueStatusPayload;
     matched?: {
@@ -52,6 +54,45 @@ export class MatchService {
       start: MatchStartPayload;
     };
   }> {
+    if (opts.isGuest === true) {
+      if (!userId && socketId) console.log(`joinSoloQueueNoUserId: ${socketId}`);
+
+      if (this.soloQueue.some((q) => q.socketId === socketId))
+        return { queueStatus: { status: 'queued', size: this.soloQueue.length } };
+
+      this.soloQueue.push({ socketId, userId: socketId, username: socketId });
+      console.log('soloQueueNoUser: ', this.soloQueue.map(q => ({
+        userId: q.userId,
+        socketId: q.socketId
+      })));
+
+      if (this.soloQueue.length < 1)
+        return { queueStatus: { status: 'queued', size: this.soloQueue.length } };
+
+      const a = this.soloQueue.shift()!;
+
+      const seed = makeSeed();
+      const nums = puzzleFromSeed(seed);
+      const puzzle = puzzleToString(nums);
+
+      const startedAt = new Date();
+
+      const start: MatchStartPayload = {
+        matchId: socketId,
+        puzzle,
+        serverStartTime: startedAt.toISOString(),
+        players: [{ userId: socketId }],
+      };
+
+      return {
+        matched: {
+          a,
+          foundA: { matchId: socketId },
+          start,
+        },
+      };
+    }
+
     const u = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!u) throw new Error('user_not_found');
@@ -90,6 +131,7 @@ export class MatchService {
     });
 
     const startedAt = new Date();
+
     await prisma.match.update({
       where: { id: match.id },
       data: { status: 'RUNNING', startedAt },
@@ -316,6 +358,48 @@ export class MatchService {
         winnerTimeMs,
       }
     });
+  }
+
+  submitGuest(
+    payload: MatchSubmitPayload
+  ): {
+    submitResult: MatchSubmitResultPayload;
+    matchResult?: MatchResultGuestPayload;
+  } {
+    const { puzzle, expression } = payload;
+
+    if (!puzzle) {
+      return {
+        submitResult: {
+          ok: false,
+          reason: 'not_found_puzzel',
+          value: null,
+        },
+      };
+    }
+
+    const puzzleNums = puzzle.split(',').map(Number);
+    const verdict = eval24(expression, puzzleNums);
+
+    const submitResult: MatchSubmitResultPayload = verdict.ok
+      ? {
+          ok: true,
+          reason: null,
+          value: ('value' in verdict ? verdict.value : null) ?? null,
+        }
+      : {
+          ok: false,
+          reason: verdict.reason  ,
+          value: ('value' in verdict ? verdict.value : null) ?? null,
+        };
+
+    if (!verdict.ok) return { submitResult };
+
+    const matchResult = {
+      winnerId: 'Guest',
+    };
+
+    return { submitResult, matchResult }
   }
 
   async submit(
