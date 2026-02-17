@@ -51,6 +51,7 @@ export type MatchResultPayload = {
       delta: number;
     }
   >;
+  reason: string;
 };
 
 export type MatchResultGuestPayload = {

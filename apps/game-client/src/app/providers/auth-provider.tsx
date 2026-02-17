@@ -5,6 +5,7 @@ import React, { createContext, useContext, useMemo, useState } from "react";
 export type Me = {
   userId: string;
   username: string;
+  elo: number;
 };
 
 type AuthContextValue = {

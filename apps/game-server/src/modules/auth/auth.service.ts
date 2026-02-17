@@ -22,6 +22,6 @@ export class AuthService {
 
   async validateSession(userId: string) {
     const session = await prisma.user.findFirst({ where: { id: userId }});
-    if (session) return { username: session.username, userId: session.id };
+    if (session) return { username: session.username, userId: session.id, elo: session.elo };
   }
 }

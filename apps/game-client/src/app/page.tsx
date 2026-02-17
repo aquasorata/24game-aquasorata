@@ -12,9 +12,15 @@ export default function HomePage() {
   const { me } = useAuth();
   const [openHowToPlay, setOpenHowToPlay] = useState(false);
   const [openLoginConfirm, setOpenLoginConfirm] = useState(false);
+  const [openLoginConfirm2, setOpenLoginConfirm2] = useState(false);
 
   return (
-    <main className="min-h-screen p-8 flex items-center justify-center">
+    <div className="
+      laptop-l:min-h-screen
+      laptop-l:mt-0 mobile-m:mt-10
+      flex items-center justify-center
+      p-8 
+    ">
       <div className="
         max-w-md w-full 
         border border-[#64afdd]
@@ -182,7 +188,79 @@ export default function HomePage() {
             </div>
           </ModulePortal>
         </div>
+        {
+          !me ?
+            <div>
+              <div 
+              onClick={() => setOpenLoginConfirm2(true)}
+              className="
+                text-center 
+                text-sm mobile-m:text-base mobile-l:text-xl
+                text-[#64afdd] font-semibold 
+                drop-shadow-sm uppercase
+              ">
+                Ready to go? Log in now
+              </div>
+              <ModulePortal open={openLoginConfirm2} onClose={() => setOpenLoginConfirm2(false)}>
+                <div 
+                  className="
+                    popover-panel
+                    fixed left-1/2 top-1/2
+                    -translate-x-1/2 -translate-y-1/2
+                    w-65 mobile-s:w-75 mobile-l:w-100
+                    tablet:w-105 laptop:w-120
+                    p-4 mobile-l:p-6
+                    shadow-xl
+                    bg-white/95 text-[#64afdd] text-center
+                    border border-[#64afdd]
+                  "
+                >
+                  <h3 className="
+                    font-semibold
+                    text-lg mb-2
+                    text-center
+                    uppercase
+                  ">
+                    Login Required
+                  </h3>
+                  <div className="
+                    mb-4
+                    text-sm
+                    uppercase
+                  ">
+                    Log in to save your progress and continue playing.
+                  </div>
+                  <div className='flex justify-between gap-4'>
+                    <button
+                      onClick={() => setOpenLoginConfirm(false)}
+                      className="
+                        block w-full text-center py-3 border border-[#64afdd] 
+                        text-[#64afdd] font-semibold uppercase
+                        duration-300 transition-colors
+                        hover:bg-[#64afdd] hover:text-white
+                      "
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      className="
+                        block w-full text-center py-3 border border-[#64afdd] 
+                        text-[#64afdd] font-semibold uppercase
+                        duration-300 transition-colors
+                        hover:bg-[#64afdd] hover:text-white
+                      "
+                      onClick={() => router.push("/login")}
+                    >
+                      Login
+                    </button>
+                  </div>
+                </div>
+              </ModulePortal>
+            </div>
+        : 
+          null
+        }
       </div>
-    </main>
+    </div>
   );
 }

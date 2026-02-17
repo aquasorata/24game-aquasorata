@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocket } from '../socket';
@@ -19,6 +20,8 @@ export type MatchSync = {
 }
 
 export type GameStatus = 'idle' | 'queued' | 'playing' | 'done';
+
+export type GameReason = 'OPPONENT_FORFEIT' | 'OPPONENT_TIMEOUT' | 'NORMAL_WIN';
 
 export type RatingChange = {
   before: number;
@@ -40,12 +43,46 @@ export type OpponentDisconnectedPayload = {
   serverNow: number;
 };
 
+export function getResultMessage(
+  reason: GameReason,
+  isWinner: boolean
+): string {
+  if (isWinner) {
+    switch (reason) {
+      case "NORMAL_WIN":
+        return "Victory!";
+      case "OPPONENT_FORFEIT":
+        return "Opponent gave up.";
+      case "OPPONENT_TIMEOUT":
+        return "Opponent timed out.";
+    }
+  }
+
+  if (reason === "OPPONENT_FORFEIT") return "You gave up.";
+  if (reason === "OPPONENT_TIMEOUT") return "You ran out of time.";
+
+  return "Defeat.";
+}
+
+export const errorMessageMap: Record<string, string> = {
+  empty: "Please enter an answer.",
+  bad_chars: "Your input contains invalid characters.",
+  wrong_numbers: "You used numbers that are not allowed.",
+  not_24: "The result must equal 24.",
+  not_found_match: "Match not found.",
+  not_found_player: "Player not found.",
+  not_found_puzzel: "Puzzle not found.",
+  invalid_expression: "Invalid mathematical expression.",
+};
+
 export function useDuel() {
+  const router = useRouter();
   const { me } = useAuth();
   const username = me?.username;
   const userId = me?.userId;
   const socketRef = useRef<Socket | null>(null);
 
+  const [reason, setReason] = useState<GameReason | null>(null);
   const [status, setStatus] = useState<GameStatus>('idle');
   const [match, setMatch] = useState<MatchStart | null>(null);
   const [timerMs, setTimerMs] = useState(0);
@@ -75,7 +112,7 @@ export function useDuel() {
     });
 
     s.on("match:duel:submit:result", (p) => {
-      setSubmitMsg(p.ok ? "CORRECT!" : `❌ ${p.reason ?? "WRONG"}`);
+      setSubmitMsg(p.ok ? "CORRECT!" : `❌ ${errorMessageMap[p.reason] ?? "WRONG"}`);
     });
 
     s.on("match:duel:result", (p) => {
@@ -84,6 +121,7 @@ export function useDuel() {
       setOppDcLeftMs(0);
       setResult(p);
       setStatus("done");
+      setReason(p.reason);
     });
 
     s.on("match:opponent:disconnected", (p: OpponentDisconnectedPayload) => {
@@ -152,6 +190,16 @@ export function useDuel() {
     socketRef.current?.emit("queue:duel:leave");
   }
 
+  function forfeit() {
+    if (!match) return;
+  
+    socketRef.current?.emit("match:duel:forfeit", {
+      matchId: match.matchId,
+    });
+  
+    router.back()
+  }
+
   useEffect(() => {
     if (!oppDc) return;
 
@@ -180,12 +228,14 @@ export function useDuel() {
     userId,
     status,
     match,
+    reason,
     timerMs,
     submitMsg,
     result,
     joinQueue,
     leaveQueue,
     submit,
+    forfeit,
     oppDc,
     oppDcLeftMs,
   };

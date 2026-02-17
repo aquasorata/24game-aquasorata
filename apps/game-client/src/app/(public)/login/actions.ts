@@ -4,14 +4,28 @@ export async function LoginAction( formData: FormData ) {
 
   if (!username || !password) return { ok: false, message: 'Invalid credentials.' };
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-    credentials: 'include'
-  })
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+      credentials: 'include'
+    });
+  
+    if (!res.ok) {
+      return {
+        ok: false,
+        message: "Login failed.",
+      };
+    }
 
-  if (!res.ok) return { ok: false, message: 'Invalid credentials.' };
+    return { ok: true };
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
 
-  return { ok: true }
+    return {
+      ok: false,
+      message: "Unable to connect to server.",
+    };
+  }
 }

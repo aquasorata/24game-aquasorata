@@ -10,7 +10,7 @@ import {
   QueueJoinPayload,
   QueueStatusPayload,
 } from './match.types';
-import { makeSeed, puzzleFromSeed, puzzleToString } from '../puzzle/puzzle';
+import { generateSolvablePuzzle } from '../puzzle/puzzle';
 import { eval24 } from '../judge/eval24';
 import { RatingService } from '../rating/rating.service';
 import { updateElo } from '../rating/elo';
@@ -71,9 +71,11 @@ export class MatchService {
 
       const a = this.soloQueue.shift()!;
 
-      const seed = makeSeed();
-      const nums = puzzleFromSeed(seed);
-      const puzzle = puzzleToString(nums);
+      const { puzzle, solution } = generateSolvablePuzzle();
+
+      console.log("puzzle:", puzzle);
+      console.log("solution:", solution);
+
 
       const startedAt = new Date();
 
@@ -115,9 +117,10 @@ export class MatchService {
 
     const a = this.soloQueue.shift()!;
 
-    const seed = makeSeed();
-    const nums = puzzleFromSeed(seed);
-    const puzzle = puzzleToString(nums);
+    const { seed, puzzle, solution } = generateSolvablePuzzle();
+    
+    console.log("puzzle:", puzzle);
+    console.log("solution:", solution);
 
     const match = await prisma.match.create({
       data: {
@@ -202,9 +205,10 @@ export class MatchService {
     const a = this.duelQueue.shift()!;
     const b = this.duelQueue.shift()!;
 
-    const seed = makeSeed();
-    const nums = puzzleFromSeed(seed);
-    const puzzle = puzzleToString(nums);
+    const { seed, puzzle, solution } = generateSolvablePuzzle();
+    
+    console.log("puzzle:", puzzle);
+    console.log("solution:", solution);
 
     const match = await prisma.match.create({
       data: {
@@ -257,9 +261,11 @@ export class MatchService {
     matchId: string,
     disconnectedUserId: string,
     opponentUserId: string,
-    opts?: { kFactor?: number; reason?: string },
+    opts?: { kFactor?: number; reasonW?: string, reasonL?: string },
   ): Promise<ForfeitResult> {
-    const reason = opts?.reason ?? 'FORFEIT_DISCONNECT';
+    const reasonW = opts?.reasonW ?? 'FORFEIT_DISCONNECT';
+    const reasonL = opts?.reasonL ?? 'FORFEIT_DISCONNECT';
+
 
     return prisma.$transaction(async (tx) => {
       const match = await tx.match.findUnique({
@@ -336,7 +342,7 @@ export class MatchService {
             before: winnerBefore,
             after: winnerAfter,
             delta: winnerDelta,
-            reason,
+            reason: reasonW,
           },
           {
             userId: loserMP.userId,
@@ -344,7 +350,7 @@ export class MatchService {
             before: loserBefore,
             after: loserAfter,
             delta: loserDelta,
-            reason
+            reason: reasonL
           },
         ],
       });
@@ -410,6 +416,7 @@ export class MatchService {
     matchResult?: MatchResultPayload;
   }> {
     const { matchId, expression } = payload;
+
     const u = await prisma.user.findUnique({ where: { id: userId } }); 
 
     if (!u) return { submitResult: { ok: false, reason: 'not_found_player', value: null } };
@@ -465,42 +472,72 @@ export class MatchService {
       data: { correctAt: now, timeMs, result: 'WIN' },
     });
 
-    const loserMP = fresh.players.find((p) => p.userId !== userId)!;
-    await prisma.matchPlayer.update({
-      where: { id: loserMP.id },
-      data: { result: 'LOSE' },
-    });
+    if (match.mode === 'DUEL') {
+      const loserMP = fresh.players.find((p) => p.userId !== userId)!;
 
-    await prisma.match.update({
-      where: { id: matchId },
-      data: { status: 'FINISHED', endedAt: now },
-    });
+      if (!loserMP) return { submitResult };
 
-    const rating = await this.rating.applyDuelResult({
-      matchId,
-      winnerId: userId,
-      loserId: loserMP.userId,
-      outcome: 'WIN_LOSE',
-    });
+      await prisma.matchPlayer.update({
+        where: { id: loserMP.id },
+        data: { result: 'LOSE' },
+      });
 
-    const matchResult: MatchResultPayload = {
-      matchId,
-      winnerId: rating.winner.userId,
-      winnerTimeMs: timeMs,
-      rating: {
-        [rating.winner.userId]: {
-          before: rating.winner.before,
-          after: rating.winner.after,
-          delta: rating.winner.delta,
+      await prisma.match.update({
+        where: { id: matchId },
+        data: { status: 'FINISHED', endedAt: now },
+      });
+
+      const rating = await this.rating.applyDuelResult({
+        matchId,
+        winnerId: userId,
+        loserId: loserMP.userId,
+        outcome: 'WIN_LOSE',
+      });
+
+      const matchResult: MatchResultPayload = {
+        matchId,
+        winnerId: rating.winner.userId,
+        winnerTimeMs: timeMs,
+        rating: {
+          [rating.winner.userId]: {
+            before: rating.winner.before,
+            after: rating.winner.after,
+            delta: rating.winner.delta,
+          },
+          [rating.loser.userId]: {
+            before: rating.loser.before,
+            after: rating.loser.after,
+            delta: rating.loser.delta,
+          },
         },
-        [rating.loser.userId]: {
-          before: rating.loser.before,
-          after: rating.loser.after,
-          delta: rating.loser.delta,
-        },
-      },
-    };
+        reason: 'NORMAL_WIN'
+      };
 
-    return { submitResult, matchResult };
+      return { submitResult, matchResult };
+    }
+
+    if (match.mode === 'SOLO') {
+      await prisma.matchPlayer.update({
+        where: { id: mp.id },
+        data: { correctAt: now, timeMs, result: 'WIN' },
+      });
+    
+      await prisma.match.update({
+        where: { id: matchId },
+        data: { status: 'FINISHED', endedAt: now },
+      });
+    
+      const matchResult: MatchResultPayload = {
+        matchId,
+        winnerId: userId,
+        winnerTimeMs: timeMs,
+        rating: {},
+        reason: 'SOLO_CLEAR'
+      };
+    
+      return { submitResult, matchResult };
+    }
+
+    return { submitResult };
   }
 }

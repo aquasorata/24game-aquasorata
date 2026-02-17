@@ -5,6 +5,7 @@ import "./globals.css";
 import { SkyBackground } from "../../public/SkyBackground";
 import { getMeServer } from "@/lib/api/getMeServer";
 import { AuthProvider } from "./providers/auth-provider";
+import { ConditionalTopRank } from "@/lib/components/ConditionalTopRank";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +32,13 @@ export default async function RootLayout({
     <AuthProvider me={me}>
       <html lang="en">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased relative min-h-screen`}
+          className={`${geistSans.variable} ${geistMono.variable} relative min-h-screen`}
         >
           <SkyBackground/>
-          <div className="relative z-0 min-h-screen">{children}</div>
+          <main className="flex flex-col relative z-0 min-h-screen">
+            {children}
+            <ConditionalTopRank/>
+          </main>
           <Toaster position="top-center" />
         </body>
       </html>

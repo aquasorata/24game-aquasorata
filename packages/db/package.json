@@ -1,23 +1,26 @@
 {
   "name": "@repo/db",
   "private": true,
-  "main": "index.ts",
-  "devDependencies": {
-    "@prisma/client": "^7.2.0",
-    "@types/node": "^25.0.9",
-    "@types/pg": "^8.16.0",
-    "dotenv": "^17.2.3",
-    "prisma": "^7.2.0",
-    "typescript": "^5.9.3"
-  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "prisma:generate": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:pull": "prisma db pull"
   },
   "dependencies": {
+    "@prisma/client": "^7.2.0",
     "@prisma/adapter-pg": "^7.2.0",
-    "pg": "^8.17.2"
+    "pg": "^8.17.2",
+    "prisma": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "@types/pg": "^8.16.0",
+    "dotenv": "^17.2.3",
+    "typescript": "^5.9.3"
   }
 }

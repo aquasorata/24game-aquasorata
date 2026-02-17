@@ -159,9 +159,6 @@ export function eval24(expression: string, puzzleNums: number[]): ChechResult {
     if (Math.abs(value - 24) < 1e-9) {
       return { ok: true, value };
     }
-    console.log('tokens: ', tokens);
-    console.log('rpn: ', rpn);
-    console.log('result: ', value);
     return { ok: false, reason: 'not_24', value };
   } catch {
     return { ok: false, reason: 'invalid_expression' };

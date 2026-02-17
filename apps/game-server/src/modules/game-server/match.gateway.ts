@@ -28,13 +28,13 @@ type PendingReconnect = {
 
 const JoinSchema = z.object({ userId: z.string().min(1) });
 const SubmitSchema = z.object({
-  puzzle: z.string().min(1),
+  puzzle: z.string().min(1).optional(),
   matchId: z.string().min(1),
   expression: z.string().min(1),
 });
 
 @WebSocketGateway({
-  cors: { origin: true, credentials: true },
+  cors: { origin: process.env.CORS_ORIGIN, credentials: true },
 })
 export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatewayConnection{
   @WebSocketServer()
@@ -63,8 +63,9 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
   afterInit(server: Server<any, any, any, SocketData>) {
     server.use((socket: Socket<any, any, any, SocketData>, next) => {
       const rawCookie = socket.handshake.headers.cookie ?? '';
+      console.log('afterInit:rawCookie:', rawCookie);
       const { sid } = cookie.parse(rawCookie);
-
+      console.log('afterInit:sid:', sid);
       if (!sid) {
         socket.data.userId = undefined;
         socket.data.username = undefined;
@@ -180,7 +181,8 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
 
         this.matchService
           .finishMatchByForfeit(p.matchId, userId, p.opponentUserId, {
-            reason: 'DISCONNECT_TIMEOUT',
+            reasonW: 'OPPONENT_TIMEOUT',
+            reasonL: 'DISCONNECT_TIMEOUT'
           })
           .then((res) => {
             const { matchId, winnerElo, winnerUserId, winnerTimeMs } = res;
@@ -338,6 +340,10 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
     const usernameUser = socket.data.username;
     const isGuest = socket.data.isGuest;
 
+    console.log(`solo:userId`, userId);
+    console.log(`solo:usernameUser`, usernameUser);
+    console.log(`solo:isGuest`, isGuest);
+
     if (isGuest) {
       const { submitResult, matchResult } = this.matchService.submitGuest(
         {
@@ -361,19 +367,20 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
       });
       return;
     }
-
+    console.log('!userId || !usernameUser: Pass')
     const { submitResult, matchResult } = await this.matchService.submit(
       {
         matchId,
         expression,
       },
-      usernameUser,
+      userId,
     );
-
+    console.log('submit: Pass')
     socket.emit('match:solo:submit:result', submitResult);
-
-    if (matchResult)
+    if (matchResult) {
+      console.log('matchResult: Pass')
       return this.server.to(matchId).emit('match:solo:result', matchResult);
+    }
   }
 
   handleSoloDisconnect(client: Socket<any, any, any, SocketData>) {
@@ -466,5 +473,75 @@ export class MatchGateway implements OnGatewayInit ,OnGatewayDisconnect, OnGatew
     const userId: string | undefined = client.data.userId;
     if (!userId) return;
     await this.onDisconnect(userId);
+  }
+
+  @SubscribeMessage('match:duel:forfeit')
+  async onDuelForfeit(
+    @MessageBody() body: { matchId: string },
+    @ConnectedSocket() socket: Socket<any, any, any, SocketData>,
+  ) {
+    const userId = socket.data.userId;
+    if (!userId) {
+      return socket.emit('match:duel:forfeit:result', {
+        ok: false,
+        reason: 'unauthorized',
+      });
+    }
+  
+    try {
+      const pending = this.pendingReconnect.get(userId);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.pendingReconnect.delete(userId);
+      }
+  
+      const match = await prisma.match.findUnique({
+        where: { id: body.matchId },
+        include: { players: true },
+      });
+  
+      if (!match) {
+        return socket.emit('match:duel:forfeit:result', {
+          ok: false,
+          reason: 'match_not_found',
+        });
+      }
+  
+      const opponent = match.players.find(p => p.userId !== userId);
+      if (!opponent) {
+        return socket.emit('match:duel:forfeit:result', {
+          ok: false,
+          reason: 'opponent_not_found',
+        });
+      }
+  
+      const res = await this.matchService.finishMatchByForfeit(
+        match.id,
+        userId,
+        opponent.userId,
+        { reasonW: 'OPPONENT_FORFEIT', reasonL: 'MANUAL_FORFEIT' },
+      );
+  
+      const { winnerUserId, winnerElo, winnerTimeMs } = res;
+  
+      this.server.to(match.id).emit('match:duel:result', {
+        matchId: match.id,
+        winnerId: winnerUserId,
+        winnerTimeMs,
+        rating: {
+          before: winnerElo.before,
+          after: winnerElo.after,
+          delta: winnerElo.delta,
+        },
+        reason: 'OPPONENT_FORFEIT',
+      });
+  
+    } catch (err) {
+      console.error('forfeit error:', err);
+      socket.emit('match:duel:forfeit:result', {
+        ok: false,
+        reason: 'internal_error',
+      });
+    }
   }
 }

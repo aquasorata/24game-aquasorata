@@ -14,6 +14,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthService } from './modules/auth/auth.service';
 import { AuthController } from './modules/auth/auth.controller';
 import { AuthModule } from './modules/auth/auth.module';
+import { RankService } from './modules/rank/rank.service';
+import { RankModule } from './modules/rank/rank.module';
 
 @Module({
   imports: [
@@ -27,8 +29,9 @@ import { AuthModule } from './modules/auth/auth.module';
     GameServerModule,
     UsersModule,
     AuthModule,
+    RankModule,
   ],
   controllers: [AppController, UsersController, AuthController],
-  providers: [AppService, JudgeService, UsersService, AuthService],
+  providers: [AppService, JudgeService, UsersService, AuthService, RankService],
 })
 export class AppModule {}

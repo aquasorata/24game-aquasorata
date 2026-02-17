@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDuel } from '../gameserver/useDuel';
+import { getResultMessage, useDuel } from '../gameserver/useDuel';
 import { BackButton } from "./BackButton ";
 import { useRouter } from "next/navigation";
 import { MenuButton } from "./MenuButton";
@@ -7,8 +7,12 @@ import ModulePortal from "./ModalPortal";
 
 export default function DuelPage() {
   const router = useRouter();
-  const { username, userId, status, match, timerMs, submitMsg, result, joinQueue, leaveQueue, submit, oppDc, oppDcLeftMs } = useDuel();
+  const { username, userId, status, match, timerMs, submitMsg, reason, result, joinQueue, leaveQueue, forfeit, submit, oppDc, oppDcLeftMs } = useDuel();
   const [expression, setExpression] = useState('');
+  const resultMessage =
+    reason && result
+      ? getResultMessage(reason, result.winnerId === userId)
+      : null;
 
   useEffect(() => {
     if (!username || !userId) {
@@ -37,8 +41,12 @@ export default function DuelPage() {
         p-4 mobile-l:p-6
         space-y-4
       ">
-        <div className="flex items-center justify-between">
-          <BackButton/>
+        <div className="
+          flex flex-col tablet:flex-row
+          gap-4 tablet:gap-0
+          items-center justify-between
+        ">
+          <BackButton state={status} onForfeit={forfeit}/>
           <div className="text-lg font-semibold uppercase text-[#64afdd]">24 Game — Duel Mode</div>
           <MenuButton/>
         </div>
@@ -105,7 +113,10 @@ export default function DuelPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="
+              flex flex-col tablet:flex-row
+              gap-2
+            ">
               <input
                 className={`
                   flex-1 border px-3 py-2
@@ -125,7 +136,7 @@ export default function DuelPage() {
               />
               <button
                 className={`
-                  border px-4
+                  border px-3 py-2
                   transition-colors duration-300
                   font-semibold uppercase
                   ${
@@ -147,8 +158,8 @@ export default function DuelPage() {
             {result && (
               <>
                 <div className="border bg-[#64afdd] border-[#64afdd] p-3 text-base font-semibold text-white space-y-1">
-                  <div>{result.winnerId == userId ? 'YOU WON' : 'YOU LOSE'}</div>
-                  <div>WINNER TIME: {(result.winnerTimeMs / 1000).toFixed(2)}s</div>
+                  <div>TIME: {(result.winnerTimeMs / 1000).toFixed(2)}s</div>
+                  <div className="uppercase">{resultMessage}</div>
                 </div>
                 <div className="border border-[#64afdd] text-base font-semibold space-y-1 text-center">
                   <button

@@ -14,12 +14,11 @@ export class AuthController {
   ) {
     const session = await this.auth.login(body.username, body.password);
 
-    const isProd = process.env.NODE_ENV === "production";
-
     res.cookie("sid", session.userId, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: 'lax',
+      secure: true,
+      sameSite: "none",
+      domain: ".aquasorata.site",
       path: '/',
       maxAge: 1000 * 60 * 60 * 24 * 14,
     });
@@ -31,12 +30,12 @@ export class AuthController {
   logout(
     @Res({ passthrough: true }) res: Response,
   ) {
-    const isProd = process.env.NODE_ENV === "production";
 
     res.clearCookie("sid", {
       httpOnly: true,
-      secure: isProd,
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
+      domain: ".aquasorata.site",
       path: "/",
     });
     
@@ -48,6 +47,7 @@ export class AuthController {
   me(@Req() req: Request) {
     console.log('SessionGuard userId: ', req.session?.userId);
     console.log('SessionGuard username: ', req.session?.username);
-    return { userId: req.session?.userId, username: req.session?.username }
+    
+    return { userId: req.session?.userId, username: req.session?.username, elo: req.session?.elo }
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
-import { GameStatus, MatchResultPayload, MatchStart } from './useDuel';
+import { errorMessageMap, GameStatus, MatchResultPayload, MatchStart } from './useDuel';
 import { getSocket } from "../socket";
 import { useAuth } from "../../app/providers/auth-provider"
 
@@ -37,7 +37,7 @@ export function useSolo() {
     });
 
     s.on("match:solo:submit:result", (p) => {
-      setSubmitMsg(p.ok ? "CORRECT!" : `❌ ${p.reason ?? "WRONG"}`);
+      setSubmitMsg(p.ok ? "CORRECT!" : `❌ ${errorMessageMap[p.reason] ?? "WRONG"}`);
     });
 
     s.on("match:solo:result", (p) => {

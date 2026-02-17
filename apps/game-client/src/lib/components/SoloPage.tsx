@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSolo } from '../gameserver/useSolo';
 import { BackButton } from './BackButton ';
 import { MenuButton } from './MenuButton';
@@ -8,6 +8,13 @@ export default function SoloPage() {
 //   const { me, isAuthed, setMe } = useAuth();
   const { userId, status, match, timerMs, submitMsg, result, joinQueue, leaveQueue, submit } = useSolo();
   const [expression, setExpression] = useState('');
+
+  useEffect(() => {
+    if (match?.matchId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpression('');
+    }
+  }, [match]);
 
   return (
     <div className="
@@ -28,7 +35,7 @@ export default function SoloPage() {
           gap-4 tablet:gap-0
           items-center justify-between
         ">
-          <BackButton/>
+          <BackButton state={status}/>
           <div className="text-lg font-semibold uppercase text-[#64afdd]">24 Game — Solo Mode</div>
           <MenuButton/>
         </div>
@@ -141,7 +148,7 @@ export default function SoloPage() {
               <>
                 <div className="border bg-[#64afdd] border-[#64afdd] p-3 text-base font-semibold text-white space-y-1">
                   <div>{result.winnerId == userId || result.winnerId == 'Guest' ? 'YOU WON' : 'YOU LOSE'}</div>
-                  <div>WINNER TIME: {result.winnerId == 'Guest' ? (timerMs / 1000).toFixed(2) : (result.winnerTimeMs / 1000).toFixed(2)}s</div>
+                  <div>TIME: {result.winnerId == 'Guest' ? (timerMs / 1000).toFixed(2) : (result.winnerTimeMs / 1000).toFixed(2)}s</div>
                 </div>
                 <div className="border border-[#64afdd] text-base font-semibold space-y-1 text-center">
                   <button

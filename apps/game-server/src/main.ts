@@ -15,16 +15,22 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  const origin = config.get<string>('CORS_ORIGIN');
+  const originEnv = config.get<string>('CORS_ORIGIN') || '';
 
+  const allowedOrigins = originEnv
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+  
+  console.log('Allowed CORS:', allowedOrigins);
+  
   app.enableCors({
-    origin: origin ?? undefined,
+    origin: allowedOrigins,
     credentials: true,
   });
 
   const port = Number(config.get('PORT') ?? 4001);
   await app.listen(port);
-  console.log(`game-server listening on :${port}`);
 }
 bootstrap().catch((err) => {
   console.log('Failed to start game-server', err);
