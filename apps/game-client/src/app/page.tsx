@@ -167,13 +167,40 @@ export default function HomePage() {
                 border border-[#64afdd]
               "
             >
-              <h3 className="font-semibold text-lg mb-2 text-center uppercase">How to Play</h3>
-              <ul className="text-sm space-y-1 list-disc pl-5 mb-4 uppercase">
-                <li>Use all numbers.</li>
-                <li>Only + − × ÷ are allowed.</li>
-                <li>You can use parentheses.</li>
-                <li>Make the result equal 24.</li>
-              </ul>
+              <h3 className="font-semibold text-lg mb-3 text-center uppercase">
+                How to Play
+              </h3>
+              <div className="text-sm space-y-3 mb-4 uppercase">
+                <div>
+                  <p className="font-semibold">Goal</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Make the final result equal 24.</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold">Rules</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Use all numbers exactly once.</li>
+                    <li>Only + − × ÷ are allowed.</li>
+                    <li>Parentheses can be used.</li>
+                    <li className="text-gray-400">
+                      You can give up at any time.
+                      <ul className="list-disc pl-5 mt-1 space-y-1 text-[#64afdd]">
+                        <li>But I want you to try your best. I’m cheering for you.</li>
+                      </ul>
+                    </li>
+                    <li>If time runs out, the round counts as a loss.</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold">Account</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>You can play without logging in.</li>
+                    <li>Log in to save your progress and match history.</li>
+                    <li>Click your username to log in or log out.</li>
+                  </ul>
+                </div>
+              </div>
               <button
                 onClick={() => setOpenHowToPlay(false)}
                 className="

@@ -18,7 +18,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://aquasorata.site"),
   title: "Battle of 24",
+  description: "Battle of 24 is a quick math challenge that tests your logic and creativity. Use all numbers, make 24, and beat the clock. Simple rules. Endless challenges.",
+  openGraph: {
+    title: "Battle of 24",
+    description: "Battle of 24 is a quick math challenge that tests your logic and creativity. Use all numbers, make 24, and beat the clock. Simple rules. Endless challenges.",
+    url: "https://aquasorata.site/",
+    siteName: "Battle of 24",
+    images: [
+      {
+        url: "/preview.jpg",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Battle of 24",
+    description: "Battle of 24 is a quick math challenge that tests your logic and creativity. Use all numbers, make 24, and beat the clock. Simple rules. Endless challenges.",
+    images: ["/preview.jpg"],
+  },
 };
 
 export default async function RootLayout({
